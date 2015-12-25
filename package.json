@@ -1,0 +1,19 @@
+{
+  "name": "good-trello-objects",
+  "version": "0.0.0",
+  "description": "Domain classes representing GoodTrello objects",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "goodtrello",
+    "classes",
+    "objects"
+  ],
+  "author": "Si Levy <simonjlevy@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "trello-objects": "0.0.0"
+  }
+}
