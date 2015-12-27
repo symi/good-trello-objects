@@ -1,5 +1,5 @@
 'use strict';
-// links
+
 
 const State = {},
     Diff = {},
@@ -30,10 +30,6 @@ function parseScript(name) {
 
 function parseType(name) {
     return (name.match(/\[(.*?)\]/g) || [''])[0].replace(/(\[|\])/g,'');
-}
-
-function parseLinks(description) {
-    
 }
 
 function parseTrails(description) {
@@ -74,17 +70,19 @@ function createName(title, script, type) {
 
 module.exports = function (Card, Checklist) {
     class GoodCard extends Card {
-        constructor(goodCard) {
+        constructor(goodCard, parentBoard) {
             super(goodCard);
+            let generatedDescription = this.getDescription().split('***')[0];
+            this._parentBoard = parentBoard;
             this.title = parseTitle(this.name);
             this.script = parseScript(this.name);
             this.type = parseType(this.name);
-            this._links = parseLinks(this.getDescription()); 
-            this._trails = parseTrails(this.getDescription());
+            this._links = undefined; 
+            this._trails = parseTrails(generatedDescription);
             this._userDescription = parseUserDescription(this.getDescription());
             this._tester = undefined;
             this._developer = undefined;
-            this._assignees = parseAssignees(this.getDescription());
+            this._assignees = parseAssignees(generatedDescription);
             this._converted = undefined;
             this._tested = undefined;
             this._state = undefined;
@@ -99,6 +97,45 @@ module.exports = function (Card, Checklist) {
         
         get usages() {
             return this._links.length;
+        }
+        
+        *getLinks() {    
+            if (this._links != null) return this._links;        
+            let cardsOnBoard = [];
+            
+            yield* this._parentBoard.iterateAllCards(card => {
+                cardsOnBoard.push(card);
+            }, this);
+                
+            let linkLines = (this.getDescription().split('***')[0].match(/^https:\/\/trello\.com\/c\/.+\(.+\)$/gm) || []);
+            
+            this._links = linkLines
+                .map(line => (line.match(/\/c\/.+\//g) || [''])[0])
+                .filter(shortLink => shortLink !== '')
+                .map(shortLink => cardsOnBoard.find(c => c.shortLink === shortLink));
+            
+            return this._links;            
+        }
+        
+        addLink(card) {
+            this._links.push(card);
+        }
+        
+        *updateLinks() {
+            let cardsOnBoard = [];
+            
+            yield* this._parentBoard.iterateAllCards(card => {
+                cardsOnBoard.push(card);
+            }, this);
+            
+            this._links = cardsOnBoard.filter(c => (c.script === this.script && c !== this));
+            
+            yield* this.setDescription();
+            
+            for (let link of this._links) {
+                link.addLink(this);
+                yield* link.setDescription();
+            }
         }
         
         *getConverted() {
@@ -171,7 +208,6 @@ module.exports = function (Card, Checklist) {
         }
         
         *setDiff(diff) {
-            //TODO: define this._parentBoard
             let labels = yield* this._parentBoard.getLabels();
             if (diff === Diff.New) {
                 this._diff = Diff.New;                
@@ -268,6 +304,9 @@ module.exports = function (Card, Checklist) {
         }
         
         *setDescription(userDescription) {
+            yield* this.getLinks();
+            yield* this.getTrails();
+            
             this._userDescription = (userDescription == null) ? this._userDescription : userDescription;            
             let description = `Developer: @${yield* this.getDeveloper()} | Tester: @${yield* this.getTester()}
             Number of other usages: ${this.usages}`;
