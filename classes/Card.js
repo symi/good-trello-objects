@@ -308,7 +308,7 @@ module.exports = function (Card, Checklist) {
             yield* this.getTrails();
             
             this._userDescription = (userDescription == null) ? this._userDescription : userDescription;            
-            let description = `Developer: @${yield* this.getDeveloper()} | Tester: @${yield* this.getTester()}
+            let description = `Developer: @${yield* this.getDeveloper() || 'none'} | Tester: @${yield* this.getTester() || 'none'}
             Number of other usages: ${this.usages}`;
             
             if (this._links.length) {
@@ -339,26 +339,93 @@ module.exports = function (Card, Checklist) {
         *setTrails(trails) {
             this._trails = trails;
             yield* this.setDescription();  
-        }        
+        }
         
-        // TODO add any async gets to the below methods, getTester/getDeveloper/getConverted etc.
-        static *getOrAdd(listId, title, script, type, recursive) {            
-            let card = yield* super.getOrAdd(listId, createName(title, script, type), recursive);
+        *_populateCard(recursive) {
+            yield* this.getChecklists(recursive);
+            yield* this.getMembers();
+            yield* this.getLabels();
+            yield* this.getLinks();   
+            yield* this.getConverted();
+            yield* this.getTested();
+            yield* this.getCleanStart();
+            yield* this.getDialogService();
+            yield* this.get3rdParty();
+            yield* this.getCodeReviewed();
+            yield* this.getPoints();
+            yield* this.getDiff();
+            yield* this.getState();
+            yield* this.getTester();
+            yield* this.getDeveloper();
+            yield* this.getTesting(); 
+        }       
+        
+        static *getOrAdd(listId, title, script, type, recursive) {
+            let goodCard = GoodCard.get(listId, title, script, type, recursive); 
+            if (goodCard) return goodCard;
+            return GoodCard.add(listId, title, script, type);
+        }
+        
+        static *get(listId, title, script, type, parentBoard, recursive) {
+           let card = yield* super.get(listId, createName(title, script, type));
+           if (!card) return;
+           let goodCard = new GoodCard(card.raw, parentBoard);
+           if (!recursive) return goodCard;
+           yield* goodCard._populateCard(recursive);
+           return goodCard;
+        }
+        
+        static *add(listId, title, script, type, parentBoard) {
+            let list = (yield* parentBoard.getLists()).find(l => l.id === listId);
+            if (!list) return;
             
-            return new GoodCard(card.raw);
+            let card = yield* list.getOrAddCard(createName(title, script, type)),
+                goodCard = new GoodCard(card.raw, parentBoard),
+                i = 0;         
+                        
+            yield* goodCard.setDescription();
+            
+            let cl = yield* goodCard.getOrAddChecklist('Browsers');
+            yield* cl.setPosition(0);
+            
+            for (let browser of browsers) {
+                yield* cl.getOrAddCheckItem(browser, i);
+                // todo: update existing positions of checkitems?
+                i++;
+            }
+            
+            cl = yield* goodCard.getOrAddChecklist('Themes');
+            yield* cl.setPosition(1);
+            i = 0;
+            
+            for (let theme of themes) {
+                yield* cl.getOrAddCheckItem(theme, i);
+                i++;
+            }
+            
+            cl = yield* goodCard.getOrAddChecklist('Testing 1');
+            yield* cl.setPosition(3);
+            
+            return goodCard;
         }
         
-        //TODO add get method.
-        
-        static *add(listId, title, script, type) {
-            let card = yield* super.add(listId, createName(title, script, type));
-            // todo: setup basic good trello props... checklists, desc.
-            return new GoodCard(card.raw);
+        static *getAll(listId, parentBoard, recursive) {
+            let cards = yield* super.getAll(listId),
+                goodCards = [];
+                
+            for (let card in cards) {
+               let goodCard = new GoodCard(card.raw, parentBoard);
+               if (recursive) yield* goodCard._populateCard(recursive);
+               goodCards.push(goodCard);  
+            }
+            
+            return goodCards;
         }
         
-        //TODO add getAll
-        
-        //TOD add getBulk
+        // TODO: gone async... problem?
+        static *getBulk(bulkdData) {
+            //TODO: super.getBulk(bulkdData);
+        }
         
         static get States() {
             return State;
