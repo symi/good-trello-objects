@@ -1,7 +1,5 @@
 'use strict';
-const createEnum = require('./utilities/createEnum');
-
-const Browsers = createEnum(['IE11', 'Edge', 'FF', 'Chrome', 'Safari']);
+const Browsers = require('../enums/Browsers');
 
 function parseBrowsers(name) {
     let browsers = name.match(/{(.+?)}|/g)

@@ -1,10 +1,10 @@
 'use strict';
-const createEnum = require('./utilities/createEnum');
-
-const State = createEnum(['WaitingDev', 'InDev', 'WaitingTesting', 'InTesting', 'WaitingFixes', 'Done', 'Invalid']),
-    Diff = createEnum(['Identical', 'New']),
-    browsers = ['IE11', 'Edge', 'FF', 'Chrome', 'Safari'],
-    themes = ['Light', 'Dark'];
+const State = require('../enums/State'),
+    Diff = require('../enums/Diff'),
+    Browsers = require('../enums/Browsers'),
+    browsers = Object.keys(Browsers).filter(key => Number.isNaN(+key)),
+    Themes = require('../enums/Themes'),
+    themes = Object.keys(Themes).filter(key => Number.isNaN(+key));
    
 function parseTitle(name) {
     return (name.match(/^([^\s]+)/g) || [''])[0];
