@@ -1,24 +1,10 @@
 'use strict';
+const createEnum = require('./utilities/createEnum');
 
-
-const State = {},
-    Diff = {},
+const State = createEnum(['WaitingDev', 'InDev', 'WaitingTesting', 'InTesting', 'WaitingFixes', 'Done', 'Invalid']),
+    Diff = createEnum(['Identical', 'New']),
     browsers = ['IE11', 'Edge', 'FF', 'Chrome', 'Safari'],
     themes = ['Light', 'Dark'];
-    
-(function () {
-    function createEnum(obj, props) {
-        props.forEach((v, i) => {
-            obj[obj[v] = i] = v;
-        });
-    } 
-    
-    const states = ['WaitingDev', 'InDev', 'WaitingTesting', 'InTesting', 'WaitingFixes', 'Done', 'Invalid'],
-        diffs = ['Identical', 'New'];
-        
-    createEnum(State, states);
-    createEnum(Diff, diffs);
-})();
    
 function parseTitle(name) {
     return (name.match(/^([^\s]+)/g) || [''])[0];
