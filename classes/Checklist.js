@@ -42,13 +42,8 @@ module.exports = function (Checklist, GoodCheckItem) {
         }
         
         static getBulk(bulkData) {
-            return bulkData.checklists.map(c => {
-                let checklist = new GoodChecklist(c);
-                checklist._checkItems = GoodCheckItem.getBulk({
-                    checkItems: c.checkItems
-                });            
-                return checklist;
-            });
+            if (!Array.isArray(bulkData.checklists)) return;
+            return bulkData.checklists.map(c => new GoodChecklist(c));
         }
     }
     

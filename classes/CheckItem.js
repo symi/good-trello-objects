@@ -63,6 +63,7 @@ module.exports = function (CheckItem) {
         }
         
         static getBulk(bulkData) {
+            if (!Array.isArray(bulkData.checkItems)) return;
             return bulkData.checkItems.map(c => new GoodCheckItem(c));
         }
     }

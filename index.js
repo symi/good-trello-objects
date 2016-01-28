@@ -4,6 +4,8 @@ function goodTrelloObjects (key, token) {
     const trello = require('trello-objects')(key, token),
         goodTrello = {};
     
+    goodTrello.trello = trello;
+    
     goodTrello.enums = {
         Browsers: require('./enums/Browsers'),
         Diff: require('./enums/Diff'),
