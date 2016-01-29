@@ -54,7 +54,7 @@ function createName(title, script, type) {
     return name;
 }
 
-module.exports = function (Card, Checklist) {
+module.exports = function (Card, GoodChecklist) {
     class GoodCard extends Card {
         constructor(goodCard, parentBoard) {
             super(goodCard);
@@ -259,13 +259,15 @@ module.exports = function (Card, Checklist) {
         *getTesting() {
             if (this._testing != null) return this._testing;
             
-            let checklists = yield* this.getChecklists(true),
+            let checklists = yield* super.getChecklists(true),
                 browsersChecklist = checklists.find(c => c.name === 'Browsers'),
                 browsersCheckItems = (browsersChecklist && (yield* browsersChecklist.getCheckItems())) || [],
                 themesChecklist = checklists.find(c => c.name === 'Theme'),
                 themesCheckItems = (themesChecklist && (yield* themesChecklist.getCheckItems())) || [],
                 testingChecklists = checklists.filter(c => c.name.includes('Testing')).sort((a, b) => parseInt(a.name.replace('Testing ', ''), 10) - parseInt(b.name.replace('Testing ', ''), 10)), //TODO make a test cycle class!
                 rounds = [];
+            
+            testingChecklists.map(checklist => new GoodChecklist(checklist.raw));
              
             for (let round of testingChecklists) {
                 let testItems = yield* round.getCheckItems();
@@ -299,7 +301,7 @@ module.exports = function (Card, Checklist) {
             
             if (this._links.length) {
                 description = `${description}
-                ${this._links.map(l => `${l.url} (${yield l.getList()})`).join('\n')}`;                
+                ${this._links.map(l => `${l.url} (${yield l.getListName()})`).join('\n')}`;                
             }
             
             if (this._trails.length) {
@@ -327,11 +329,11 @@ module.exports = function (Card, Checklist) {
             yield* this.setDescription();  
         }
         
-        *_populateCard(recursive) {
+        *_populateCard(recursive, bulk) {
             yield* this.getChecklists(recursive);
             yield* this.getMembers();
             yield* this.getLabels();
-            yield* this.getLinks();   
+            if (!bulk) yield* this.getLinks(); // get links requires all other cards to exist
             yield* this.getConverted();
             yield* this.getTested();
             yield* this.getCleanStart();
@@ -344,7 +346,21 @@ module.exports = function (Card, Checklist) {
             yield* this.getTester();
             yield* this.getDeveloper();
             yield* this.getTesting(); 
-        }       
+        }
+        
+        *getChecklists(recursive) {
+            let checklists = yield* super.getChecklists();
+            return checklists.map(c => {
+                let checklist = new GoodChecklist(c.raw);
+                if (recursive) checklist.getCheckItems();
+                return checklist;
+            });
+        }
+        
+        *getOrAddChecklist(name) {
+            let checklist = yield* super.getOrAddChecklist(name);
+            return new GoodChecklist(checklist.raw);
+        }
         
         static *getOrAdd(listId, title, script, type, recursive) {
             let goodCard = GoodCard.get(listId, title, script, type, recursive); 
@@ -401,20 +417,18 @@ module.exports = function (Card, Checklist) {
                 
             for (let card in cards) {
                let goodCard = new GoodCard(card.raw, parentBoard);
-               if (recursive) yield* goodCard._populateCard(recursive);
+               if (recursive) yield* goodCard._populateCard(recursive); // TODO issue around populateCard and bulk will have to run at end and build the full card list up locally.
                goodCards.push(goodCard);  
             }
             
             return goodCards;
         }
         
-        // TODO: gone async... problem?
-        static *getBulk(bulkdData) {
-            //TODO: super.getBulk(bulkdData);
-        }
-        
-        static get States() {
-            return State;
+        // todo this is the completely wrong design. we need to call _populateCard but getBulk method shouldnt be async and need to deal with link issue.
+        // see getBulk in board for the rest of the implementation that should be here.
+        static getBulk(bulkData, parentBoard) {
+            if (!Array.isArray(bulkData.cards)) return;        
+            return bulkData.cards.map(c => new GoodCard(c, parentBoard));
         }
     }
     
