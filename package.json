@@ -1,6 +1,6 @@
 {
   "name": "good-trello-objects",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Domain classes representing GoodTrello objects",
   "main": "index.js",
   "scripts": {
@@ -8,6 +8,7 @@
   },
   "keywords": [
     "goodtrello",
+    "trello",
     "classes",
     "objects"
   ],
