@@ -44,5 +44,5 @@ module.exports = function (List, GoodCard) {
         }
     }
     
-    return GoodChecklist;
+    return GoodList;
 };

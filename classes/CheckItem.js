@@ -12,7 +12,8 @@ function parseBrowsers(name) {
 }
 
 function parseBug(name) {
-    return name.split('}|')[1] || '';
+    let bug = name.split('}|');
+    return (bug.length > 1 ? bug[1] : bug[0]);
 }
 
 function generateName(bug, browsers) {

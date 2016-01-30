@@ -14,6 +14,6 @@
   "author": "Si Levy <simonjlevy@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "trello-objects": "0.0.0"
+    "trello-objects": "0.0.2"
   }
 }

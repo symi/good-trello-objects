@@ -31,7 +31,7 @@ module.exports = function (Board, GoodList) {
             yield* board.iterateAllCards(c => allCards.push(c));
             
             for (let card of allCards) {
-                card._populateCard(); // ugh...
+                yield* card._populateCard(); // ugh...
             }
             
             return board;

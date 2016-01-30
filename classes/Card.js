@@ -7,7 +7,8 @@ const State = require('../enums/State'),
     themes = Object.keys(Themes).filter(key => Number.isNaN(+key));
    
 function parseTitle(name) {
-    return (name.match(/^([^\s]+)/g) || [''])[0];
+    let parts = name.split(' <');
+    return (parts.length > 1 ? parts[0] : '');
 }
 
 function parseScript(name) {
@@ -23,7 +24,8 @@ function parseTrails(description) {
 }
 
 function parseUserDescription(description) {
-    return description.split('***')[1] || '';
+    let parts = description.split('***');
+    return (parts[1] || '').replace(/^(\s*)/g, '');
 }
 
 function parseAssignees(description) {
@@ -85,21 +87,21 @@ module.exports = function (Card, GoodChecklist) {
             return this._links.length;
         }
         
-        *getLinks() {    
+        *getLinks() {            
             if (this._links != null) return this._links;        
             let cardsOnBoard = [];
             
             yield* this._parentBoard.iterateAllCards(card => {
                 cardsOnBoard.push(card);
             }, this);
-                
+             
             let linkLines = (this.getDescription().split('***')[0].match(/^https:\/\/trello\.com\/c\/.+\(.+\)$/gm) || []);
-            
+             
             this._links = linkLines
-                .map(line => (line.match(/\/c\/.+\//g) || [''])[0])
+                .map(line => (/\/c\/(.+)\//g.exec(line) || ['', ''])[1].toLowerCase())
                 .filter(shortLink => shortLink !== '')
-                .map(shortLink => cardsOnBoard.find(c => c.shortLink === shortLink));
-            
+                .map(shortLink => cardsOnBoard.find(c => c.shortLink.toLowerCase() === shortLink));
+
             return this._links;            
         }
         
@@ -137,13 +139,13 @@ module.exports = function (Card, GoodChecklist) {
             
             for (let checklist of yield* this.getChecklists(true)) {
                 for (let checkItem of yield* checklist.getCheckItems()) {
-                    if (!!checkItem.complete) {
+                    if (!checkItem.complete) {
                         this._tested = false;
                         break;
                     }
                 }
                 
-                if (!!this._tested) break;
+                if (!this._tested) break;
             }
             
             return this._tested;
@@ -238,7 +240,7 @@ module.exports = function (Card, GoodChecklist) {
         }
         
         *setTester(member) {
-            this._tester = yield this.getOrAddMember(member);
+            this._tester = yield* this.getOrAddMember(member);
             yield* this.setDescription();
             return this._tester;
         }
@@ -251,7 +253,7 @@ module.exports = function (Card, GoodChecklist) {
         }
         
         *setDeveloper(member) {
-            this._developer = yield this.getOrAddMember(member);
+            this._developer = yield* this.getOrAddMember(member);
             yield* this.setDescription();
             return this._tester;
         }
@@ -262,17 +264,17 @@ module.exports = function (Card, GoodChecklist) {
             let checklists = yield* super.getChecklists(true),
                 browsersChecklist = checklists.find(c => c.name === 'Browsers'),
                 browsersCheckItems = (browsersChecklist && (yield* browsersChecklist.getCheckItems())) || [],
-                themesChecklist = checklists.find(c => c.name === 'Theme'),
+                themesChecklist = checklists.find(c => c.name === 'Themes'),
                 themesCheckItems = (themesChecklist && (yield* themesChecklist.getCheckItems())) || [],
                 testingChecklists = checklists.filter(c => c.name.includes('Testing')).sort((a, b) => parseInt(a.name.replace('Testing ', ''), 10) - parseInt(b.name.replace('Testing ', ''), 10)), //TODO make a test cycle class!
-                rounds = [];
+                rounds = {};
             
-            testingChecklists.map(checklist => new GoodChecklist(checklist.raw));
+            testingChecklists = testingChecklists.map(checklist => new GoodChecklist(checklist.raw));
+            rounds.count = testingChecklists.length;
              
-            for (let round of testingChecklists) {
-                let testItems = yield* round.getCheckItems();
-                rounds.push(testItems.map(t => t.name));
-            }                
+            for (let i = 0; i < testingChecklists.length; i++) {
+                rounds[i + 1] = yield* testingChecklists[i].getCheckItems();                
+            }
              
             this._testing = {
                 browsers: browsers.reduce((obj, browser) => {
@@ -293,16 +295,20 @@ module.exports = function (Card, GoodChecklist) {
         
         *setDescription(userDescription) {
             yield* this.getLinks();
-            yield* this.getTrails();
+            this.getTrails();
             
-            this._userDescription = (userDescription == null) ? this._userDescription : userDescription;            
-            let description = `Developer: @${yield* this.getDeveloper() || 'none'} | Tester: @${yield* this.getTester() || 'none'}
-            Number of other usages: ${this.usages}`;
+            this._userDescription = (userDescription == null) ? this._userDescription : userDescription;  
+            let developer = yield* this.getDeveloper(),
+                tester = yield* this.getTester(),
+                description = `Developer: ${(developer ? '@' + developer.username : 'none')} | Tester: ${(tester ? '@' + tester.username : 'none')}
+Number of other usages: ${this.usages}`;
             
-            if (this._links.length) {
-                description = `${description}
-                ${this._links.map(l => `${l.url} (${yield l.getListName()})`).join('\n')}`;                
+            let linkText = '';
+            for (let l of this._links) {
+                linkText += `\n${l.url} (${yield l.getListName()})`;
             }
+            
+            description += linkText;
             
             if (this._trails.length) {
                 description = `${description}
@@ -310,14 +316,14 @@ module.exports = function (Card, GoodChecklist) {
             }
             
             description = `${description}
-            ***`;
+***`;
             
             if (this._userDescription) {
                 description = `${description}
-                ${this._userDescription}`;
+${this._userDescription}`;
             }
             
-            super.setDescription(description);
+            yield* super.setDescription(description);
         }
         
         getTrails() {
