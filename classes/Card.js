@@ -88,20 +88,21 @@ module.exports = function (Card, GoodChecklist) {
         }
         
         *getLinks() {            
-            if (this._links != null) return this._links;        
+            if (this._links != null) return this._links;
             let cardsOnBoard = [];
             
-            yield* this._parentBoard.iterateAllCards(card => {
+            yield* this._parentBoard.iterateAllCards(function* (card) {
                 cardsOnBoard.push(card);
-            }, this);
+            });
              
             let linkLines = (this.getDescription().split('***')[0].match(/^https:\/\/trello\.com\/c\/.+\(.+\)$/gm) || []);
-             
+            
             this._links = linkLines
                 .map(line => (/\/c\/(.+)\//g.exec(line) || ['', ''])[1].toLowerCase())
                 .filter(shortLink => shortLink !== '')
-                .map(shortLink => cardsOnBoard.find(c => c.shortLink.toLowerCase() === shortLink));
-
+                .map(shortLink => cardsOnBoard.find(c => c.shortLink.toLowerCase() === shortLink))
+                .filter(link => link !== undefined);
+                
             return this._links;            
         }
         
@@ -112,9 +113,9 @@ module.exports = function (Card, GoodChecklist) {
         *updateLinks() {
             let cardsOnBoard = [];
             
-            yield* this._parentBoard.iterateAllCards(card => {
+            yield* this._parentBoard.iterateAllCards(function* (card) {
                 cardsOnBoard.push(card);
-            }, this);
+            });
             
             this._links = cardsOnBoard.filter(c => (c.script === this.script && c !== this));
             

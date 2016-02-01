@@ -14,10 +14,10 @@ module.exports = function (Board, GoodList) {
             return this._modules; 
         }
         
-        *iterateAllCards(callbackFn, context) {        
-            for (let l of yield* this.getLists()) {
-                for (let c of yield* l.getCards()) {
-                    callbackFn.call(context, c);
+        *iterateAllCards(callbackFn) {        
+            for (let list of yield* this.getLists()) {
+                for (let card of yield* list.getCards()) {
+                    yield* callbackFn(card);
                 }
             }
         }
@@ -25,14 +25,11 @@ module.exports = function (Board, GoodList) {
         static *getBulk(name) {
             let partialBoard = yield* super.getOrAdd(name),
                 bulkData = yield* super.getRawBulk(partialBoard),
-                board = new GoodBoard(bulkData),
-                allCards = [];
+                board = new GoodBoard(bulkData);
                 
-            yield* board.iterateAllCards(c => allCards.push(c));
-            
-            for (let card of allCards) {
-                yield* card._populateCard(); // ugh...
-            }
+            yield* board.iterateAllCards(function* (card) {
+                yield* card._populateCard();
+            });
             
             return board;
         }
